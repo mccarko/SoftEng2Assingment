@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+<style>
+    .collapsible {
+        background-color: HotPink;
+        color: white;
+        cursor: pointer;
+        padding: 20px;
+        width: 100%;
+        border: 2px solid black;
+        text-align: left;
+        outline: none;
+        font-size: 14px;
+    }
+
+    .active, .collapsible:hover {
+        border: none;
+        background-color: Fuchsia;
+    }
+
+    .content {
+        padding: 20px;
+        max-height: 0;
+        overflow: hidden;
+        transition: max-height 0.2s ease-out;
+        background-color: HotPink;
+        color: white;
+    }
+</style>
+
+  <body>
+
+  <div class="container">
+    <h1>Questions from Stackoverflow</h1>
+    <div class='search-container'>
+      <input type="text" placeholder="Enter your tag here" id="tag" value="">
+      <button type="button" onclick="displayQuestions()">Press to search<i class="fa fa-search"></i></button>
+    </div>
+  </div>
+  <br>
+  <h2>Questions Related To Your Tag<h2>
+  <div id="output">
+  </div>
+
+  </body>
+  <script>
+  var questions=new Array;
+  var givenTag;
+
+  var startTime=0;
+  var runTime=0;
+
+  var today = Math.trunc(new Date().getTime() / 1000);
+  var lastWeek = Math.trunc((today - (7 *24 * 60 * 60 * 1000)) / 1000);
+
+  function displayQuestions(){
+    $(document).ready(function(){
+      givenTag=document.getElementById("tag").value
+      startTime=new Date().getTime()
+      getNewest()
+    })
+  }
+
+  async function getNewest(){
+    $(document).ready(function(){
+      $.ajax({
+        url: "http://api.stackexchange.com/2.2/search?page=1&pagesize=10&fromdate="+lastWeek+"&todate="+ today +"&order=desc&sort=creation&tagged="+givenTag+"&site=stackoverflow&filter=!-n6ZxEy3M5pTe6GPbTcG*(58xv3NWudGiI.4zBypgLLO8h9C)mYdiu",
+        type: "GET",
+        success: function(response) {
+          questions=questions.concat(response.items)
+          getVoted()
+        },
+        error: function(error) {
+          console.log(error);
+        }
+      })
+    })
+  }
+
+  async function getVoted(){
+    $(document).ready(function(){
+      $.ajax({
+        url: "http://api.stackexchange.com/2.2/search?page=1&pagesize=10&fromdate="+lastWeek+"&todate="+ today +"&order=desc&sort=votes&tagged="+givenTag+"&site=stackoverflow&filter=!-n6ZxEy3M5pTe6GPbTcG*(58xv3NWudGiI.4zBypgLLO8h9C)mYdiu",
+        type: "GET",
+        success: function(response){
+          runTime= new Date().getTime() - startTime
+          questions=questions.concat(response.items)
+          sortQuestions()
+          console.log(questions);
+        },
+        error: function(error){
+          console.log(error);
+        }
+      })
+    })
+  }
+
+  async function sortQuestions(){
+    questions.sort(function(a,b){
+      return parseFloat(b.creation_date)-parseFloat(a.creation_date);
+    });
+    var returnValue="";
+    for(var i=0;i<questions.length;i++){
+      returnValue+= "<button class='collapsible'>" + questions[i].title;
+      returnValue+="<p>Asked on:"+ new Date(questions[i].creation_date*1000)+"</p> <p>Votes#:"+questions[i].score+"</p></button>"
+      returnValue+="<div class='content'><p>" + questions[i].body+ "</p>"
+
+      if(questions[i].answers){
+        for(var f =0;f<questions[i].answers.length;f++){
+          returnValue+="<p>" +questions[i].answers[f].title+"</p><p>Answered on:"+ new Date(questions[i].answers[f].creation_date*1000)+ "</p><p>Votes#:"+questions[i].answers[f].score+ "</p><p>"+questions[i].answers[f].body+"</p><br>"
+          if(questions[i].answers[f].comments){
+            for(var e=0;e<questions[i].answers[f].comments.length;e++){
+              returnValue+="<p>" + questions[i].answers[f].comments[e].body+"</p><p>Commented on:"+ new Date(questions[i].answers[f].comments[e].creation_date*1000)+"</p><p>Votes#:"+ questions[i].answers[f].comments[e].score+"</p><br>"
+            }
+          }
+        }
+      }
+      if(questions[i].comments){
+        for(var f=0;f<questions[i].comments.length;f++){
+          returnValue+="<p>"+questions[i].comments[f].body+"</p><p>Commented on:"+ new Date(questions[i].comments[f].creation_date*1000)+"</p><p>Votes#:"+questions[i].comments[f].score+ "</p><br>"
+        }
+      }
+      returnValue+="</div>"
+    }
+    returnValue+="<p>Response Time: " + runTime/1000+"s</p>"
+
+    document.getElementById("output").innerHTML=returnValue;
+
+    //handle expanding and collapsing of collapsible element
+          var collapsible = document.getElementsByClassName("collapsible");
+          var i;
+
+          for (i = 0; i < collapsible.length; i++) {
+            collapsible[i].addEventListener("click", function() {
+              this.classList.toggle("active");
+              var content = this.nextElementSibling;
+              if (content.style.maxHeight){
+                content.style.maxHeight = null;
+              } else {
+                content.style.maxHeight = content.scrollHeight + "px";
+              }
+            });
+          }
+  }
+
+
+</script>
+</html>
